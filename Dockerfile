@@ -7,7 +7,7 @@ RUN go get -u github.com/golang/dep/cmd/dep
 WORKDIR /go/src/github.com/anshumanbh/git-all-secrets
 COPY Gopkg.toml Gopkg.lock ./
 RUN dep ensure -vendor-only -v
-COPY main.go ./
+COPY *.go ./
 RUN go build -v -o /go/bin/git-all-secrets
 
 # Final container
