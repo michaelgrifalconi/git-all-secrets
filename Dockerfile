@@ -20,18 +20,7 @@ ENV PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
 
 # Create a generic SSH config for Github
 WORKDIR /root/.ssh
-RUN echo "Host *github.com \
-\n  IdentitiesOnly yes \
-\n  StrictHostKeyChecking no \
-\n  UserKnownHostsFile=/dev/null \
-\n  IdentityFile /root/.ssh/id_rsa \
-\n  \
-\n Host github.*.com \
-\n  IdentitiesOnly yes \
-\n  StrictHostKeyChecking no \
-\n  UserKnownHostsFile=/dev/null \
-\n  IdentityFile /root/.ssh/id_rsa" > config
-RUN ssh-keyscan -H github.com >> /root/.ssh/known_hosts
+COPY sshconfig config
 RUN git clone https://github.com/anshumanbh/repo-supervisor.git /root/repo-supervisor
 
 # Install truffleHog
