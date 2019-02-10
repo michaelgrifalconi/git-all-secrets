@@ -10,6 +10,7 @@ import (
 	"os/exec"
 	"strings"
 	"sync"
+	"time"
 )
 
 type repositoryScan struct {
@@ -59,6 +60,7 @@ func runTrufflehog(filepath string, reponame string, orgoruser string) error {
 	} else {
 		params = append(params, "--entropy=False")
 	}
+	start := time.Now()
 	cmd1 = exec.Command("trufflehog", params...)
 
 	// direct stdout to the outfile
@@ -66,11 +68,12 @@ func runTrufflehog(filepath string, reponame string, orgoruser string) error {
 
 	err1 := cmd1.Run()
 	// truffleHog returns an exit code 1 if it finds anything
+	elapsed := time.Since(start)
 	if err1 != nil && err1.Error() != "exit status 1" {
-		Info("truffleHog Scanning failed for: " + orgoruser + "_" + reponame + ". Please scan it manually.")
+		Info(fmt.Sprintf("truffleHog Scanning failed after: \t%s\t\t for: %s_%s. Please scan it manually.\n", elapsed, orgoruser, reponame))
 		fmt.Println(err1)
 	} else {
-		fmt.Println("Finished truffleHog Scanning for: " + orgoruser + "_" + reponame)
+		fmt.Printf("Finished truffleHog Scanning after: \t%s\t\t for: %s_%s\n", elapsed, orgoruser, reponame)
 	}
 
 	return nil
