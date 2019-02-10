@@ -4,6 +4,7 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	"io/ioutil"
 	"log"
 	"os"
 	"strings"
@@ -67,47 +68,48 @@ func main() {
 	//By now, we either have the org, user, repoURL or the gistURL. The program flow changes accordingly..
 
 	if *org != "" { //If org was supplied
-		m := "Since org was provided, the tool will proceed to scan all the org repos, then all the user repos and user gists in a recursive manner"
+		if !*scanOnly {
+			m := "Since org was provided, the tool will proceed to scan all the org repos, then all the user repos and user gists in a recursive manner"
 
-		if *orgOnly {
-			m = "Org was specified combined with orgOnly, the tool will proceed to scan only the org repos and nothing related to its users"
-		}
+			if *orgOnly {
+				m = "Org was specified combined with orgOnly, the tool will proceed to scan only the org repos and nothing related to its users"
+			}
 
-		Info(m)
+			Info(m)
 
-		//cloning all the repos of the org
-		err := cloneorgrepos(ctx, client, *org)
-		check(err)
-
-		if *teamName != "" { //If team was supplied
-			Info("Since team name was provided, the tool will clone all repos to which the team has access")
-
-			//cloning all the repos of the team
-			err := cloneTeamRepos(ctx, client, *org, *teamName)
+			//cloning all the repos of the org
+			err := cloneorgrepos(ctx, client, *org)
 			check(err)
 
-		}
+			if *teamName != "" { //If team was supplied
+				Info("Since team name was provided, the tool will clone all repos to which the team has access")
 
-		//getting all the users of the org into the allUsers array
-		allUsers, err := listallusers(ctx, client, *org)
-		check(err)
-
-		if !*orgOnly {
-
-			//iterating through the allUsers array
-			for _, user := range allUsers {
-
-				//cloning all the repos of a user
-				err1 := cloneuserrepos(ctx, client, *user.Login)
-				check(err1)
-
-				//cloning all the gists of a user
-				err2 := cloneusergists(ctx, client, *user.Login)
-				check(err2)
+				//cloning all the repos of the team
+				err := cloneTeamRepos(ctx, client, *org, *teamName)
+				check(err)
 
 			}
-		}
 
+			//getting all the users of the org into the allUsers array
+			allUsers, err := listallusers(ctx, client, *org)
+			check(err)
+
+			if !*orgOnly {
+
+				//iterating through the allUsers array
+				for _, user := range allUsers {
+
+					//cloning all the repos of a user
+					err1 := cloneuserrepos(ctx, client, *user.Login)
+					check(err1)
+
+					//cloning all the gists of a user
+					err2 := cloneusergists(ctx, client, *user.Login)
+					check(err2)
+
+				}
+			}
+		}
 		Info("Scanning all org repositories now..This may take a while so please be patient\n")
 		err = scanorgrepos(*org)
 		check(err)
@@ -125,22 +127,24 @@ func main() {
 
 			Info("Scanning all user repositories and gists now..This may take a while so please be patient\n")
 			var wguser sync.WaitGroup
-			for _, user := range allUsers {
+			users, _ := ioutil.ReadDir("/tmp/repos/users/")
+			for _, user := range users {
 				wguser.Add(1)
-				go scanforeachuser(*user.Login, &wguser)
+				go scanforeachuser(user.Name(), &wguser)
 			}
 			wguser.Wait()
 			Info("Finished scanning all user repositories and gists\n")
 		}
 
 	} else if *user != "" { //If user was supplied
-		Info("Since user was provided, the tool will proceed to scan all the user repos and user gists\n")
-		err1 := cloneuserrepos(ctx, client, *user)
-		check(err1)
+		if !*scanOnly {
+			Info("Since user was provided, the tool will proceed to scan all the user repos and user gists\n")
+			err1 := cloneuserrepos(ctx, client, *user)
+			check(err1)
 
-		err2 := cloneusergists(ctx, client, *user)
-		check(err2)
-
+			err2 := cloneusergists(ctx, client, *user)
+			check(err2)
+		}
 		Info("Scanning all user repositories and gists now..This may take a while so please be patient\n")
 		var wguseronly sync.WaitGroup
 		wguseronly.Add(1)
@@ -201,19 +205,19 @@ func main() {
 			rn = lastString
 		}
 		fpath = bpath + orgoruserName + "/" + rn
-
-		//cloning
-		Info("Starting to clone: " + url + "\n")
-		var wgo sync.WaitGroup
-		wgo.Add(1)
-		func(url string, fpath string, wgo *sync.WaitGroup) {
-			enqueueJob(func() {
-				gitclone(url, fpath, wgo)
-			})
-		}(url, fpath, &wgo)
-		wgo.Wait()
-		Info("Cloning of: " + url + " finished\n")
-
+		if !*scanOnly {
+			//cloning
+			Info("Starting to clone: " + url + "\n")
+			var wgo sync.WaitGroup
+			wgo.Add(1)
+			func(url string, fpath string, wgo *sync.WaitGroup) {
+				enqueueJob(func() {
+					gitclone(url, fpath, wgo)
+				})
+			}(url, fpath, &wgo)
+			wgo.Wait()
+			Info("Cloning of: " + url + " finished\n")
+		}
 		//scanning
 		Info("Starting to scan: " + url + "\n")
 		var wgs sync.WaitGroup
