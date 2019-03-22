@@ -29,7 +29,8 @@ var (
 	mergeOutput          = flag.Bool("mergeOutput", false, "Merge the output files of all the tools used into one JSON file")
 	blacklist            = flag.String("blacklist", "", "Comma seperated values of Repos to Skip Scanning for")
 	executionQueue       chan bool
-	scanOnly             = flag.Bool("scanOnly", false, "Just scan, do not download. Please make sure to mount a volume with correct file structure.") //TODO improve docs about this
+	scanOnly             = flag.Bool("scanOnly", false, "Just scan, do not download. Please make sure to mount a volume with correct file structure.")   //TODO improve docs about this
+	downloadOnly         = flag.Bool("downloadOnly", false, "Just download, do not scan. Please make sure to mount a volume to retain downloaded data.") //TODO improve docs about this
 )
 
 func stringInSlice(a string, list []*github.Repository) (bool, error) {

@@ -110,32 +110,33 @@ func main() {
 				}
 			}
 		}
-		Info("Scanning all org repositories now..This may take a while so please be patient\n")
-		err = scanorgrepos(*org)
-		check(err)
-		Info("Finished scanning all org repositories\n")
-
-		if *teamName != "" { //If team was supplied
-			Info("Scanning all team repositories now...This may take a while so please be patient\n")
-			err = scanTeamRepos(*org)
+		if !*downloadOnly {
+			Info("Scanning all org repositories now..This may take a while so please be patient\n")
+			err = scanorgrepos(*org)
 			check(err)
+			Info("Finished scanning all org repositories\n")
 
-			Info("Finished scanning all team repositories\n")
-		}
+			if *teamName != "" { //If team was supplied
+				Info("Scanning all team repositories now...This may take a while so please be patient\n")
+				err = scanTeamRepos(*org)
+				check(err)
 
-		if !*orgOnly {
-
-			Info("Scanning all user repositories and gists now..This may take a while so please be patient\n")
-			var wguser sync.WaitGroup
-			users, _ := ioutil.ReadDir("/tmp/repos/users/")
-			for _, user := range users {
-				wguser.Add(1)
-				go scanforeachuser(user.Name(), &wguser)
+				Info("Finished scanning all team repositories\n")
 			}
-			wguser.Wait()
-			Info("Finished scanning all user repositories and gists\n")
-		}
 
+			if !*orgOnly {
+
+				Info("Scanning all user repositories and gists now..This may take a while so please be patient\n")
+				var wguser sync.WaitGroup
+				users, _ := ioutil.ReadDir("/tmp/repos/users/")
+				for _, user := range users {
+					wguser.Add(1)
+					go scanforeachuser(user.Name(), &wguser)
+				}
+				wguser.Wait()
+				Info("Finished scanning all user repositories and gists\n")
+			}
+		}
 	} else if *user != "" { //If user was supplied
 		if !*scanOnly {
 			Info("Since user was provided, the tool will proceed to scan all the user repos and user gists\n")
@@ -145,13 +146,14 @@ func main() {
 			err2 := cloneusergists(ctx, client, *user)
 			check(err2)
 		}
-		Info("Scanning all user repositories and gists now..This may take a while so please be patient\n")
-		var wguseronly sync.WaitGroup
-		wguseronly.Add(1)
-		go scanforeachuser(*user, &wguseronly)
-		wguseronly.Wait()
-		Info("Finished scanning all user repositories and gists\n")
-
+		if !*downloadOnly {
+			Info("Scanning all user repositories and gists now..This may take a while so please be patient\n")
+			var wguseronly sync.WaitGroup
+			wguseronly.Add(1)
+			go scanforeachuser(*user, &wguseronly)
+			wguseronly.Wait()
+			Info("Finished scanning all user repositories and gists\n")
+		}
 	} else if *repoURL != "" || *gistURL != "" { //If either repoURL or gistURL was supplied
 
 		var url, repoorgist, fpath, rn, lastString, orgoruserName string
@@ -218,20 +220,21 @@ func main() {
 			wgo.Wait()
 			Info("Cloning of: " + url + " finished\n")
 		}
-		//scanning
-		Info("Starting to scan: " + url + "\n")
-		var wgs sync.WaitGroup
-		wgs.Add(1)
+		if !*downloadOnly {
+			//scanning
+			Info("Starting to scan: " + url + "\n")
+			var wgs sync.WaitGroup
+			wgs.Add(1)
 
-		func(rn string, fpath string, wgs *sync.WaitGroup, orgoruserName string) {
-			enqueueJob(func() {
-				runGitTools(*toolName, fpath+"/", wgs, rn, orgoruserName)
-			})
-		}(rn, fpath, &wgs, orgoruserName)
+			func(rn string, fpath string, wgs *sync.WaitGroup, orgoruserName string) {
+				enqueueJob(func() {
+					runGitTools(*toolName, fpath+"/", wgs, rn, orgoruserName)
+				})
+			}(rn, fpath, &wgs, orgoruserName)
 
-		wgs.Wait()
-		Info("Scanning of: " + url + " finished\n")
-
+			wgs.Wait()
+			Info("Scanning of: " + url + " finished\n")
+		}
 	}
 
 	//Now, that all the scanning has finished, time to combine the output
